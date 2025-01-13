@@ -11,7 +11,7 @@ import cv2
 from utils.utils import homography_scaling_torch as homography_scaling
 from utils.utils import filter_points
 
-class Coco(data.Dataset):
+class Cars(data.Dataset):
     default_config = {
         'labels': None,
         'cache_in_memory': False,

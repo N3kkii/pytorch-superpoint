@@ -54,6 +54,7 @@ def train_joint(config, output_dir, args):
     task = config['data']['dataset']
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #device = torch.device("cpu")
     logging.info('train on device: %s', device)
     with open(os.path.join(output_dir, 'config.yml'), 'w') as f:
         yaml.dump(config, f, default_flow_style=False)
@@ -69,7 +70,7 @@ def train_joint(config, output_dir, args):
     train_loader, val_loader = data['train_loader'], data['val_loader']
 
     datasize(train_loader, config, tag='train')
-    datasize(val_loader, config, tag='val')
+    #datasize(val_loader, config, tag='val')
     # init the training agent using config file
     # from train_model_frontend import Train_model_frontend
     from utils.loader import get_module
@@ -132,6 +133,7 @@ if __name__ == '__main__':
 
     with open(args.config, 'r') as f:
         config = yaml.safe_load(f)
+        print("Config: ", config)
     # EXPER_PATH from settings.py
     output_dir = os.path.join(EXPER_PATH, args.exper_name)
     os.makedirs(output_dir, exist_ok=True)

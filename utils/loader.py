@@ -42,7 +42,7 @@ def worker_init_fn(worker_id):
    np.random.seed(base_seed + worker_id)
 
 
-def dataLoader(config, dataset='syn', warp_input=False, train=True, val=True):
+def dataLoader(config, dataset='syn', warp_input=False, train=True, val=False):
     import torchvision.transforms as transforms
     training_params = config.get('training', {})
     workers_train = training_params.get('workers_train', 1) # 16
@@ -74,20 +74,20 @@ def dataLoader(config, dataset='syn', warp_input=False, train=True, val=True):
         num_workers=workers_train,
         worker_init_fn=worker_init_fn
     )
-    val_set = Dataset(
-        transform=data_transforms['train'],
-        task = 'val',
-        **config['data'],
-    )
-    val_loader = torch.utils.data.DataLoader(
-        val_set, batch_size=config['model']['eval_batch_size'], shuffle=True,
-        pin_memory=True,
-        num_workers=workers_val,
-        worker_init_fn=worker_init_fn
-    )
+    # val_set = Dataset(
+    #     transform=data_transforms['train'],
+    #     task = 'val',
+    #     **config['data'],
+    # )
+    # val_loader = torch.utils.data.DataLoader(
+    #     val_set, batch_size=config['model']['eval_batch_size'], shuffle=True,
+    #     pin_memory=True,
+    #     num_workers=workers_val,
+    #     worker_init_fn=worker_init_fn
+    # )
     # val_set, val_loader = None, None
-    return {'train_loader': train_loader, 'val_loader': val_loader,
-            'train_set': train_set, 'val_set': val_set}
+    return {'train_loader': train_loader, 'val_loader': None,
+            'train_set': train_set, 'val_set': None}
 
 def dataLoader_test(config, dataset='syn', warp_input=False, export_task='train'):
     import torchvision.transforms as transforms

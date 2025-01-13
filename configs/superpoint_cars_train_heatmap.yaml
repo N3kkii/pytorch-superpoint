@@ -1,10 +1,7 @@
 data:
-    # name: 'coco'
-    dataset: 'Coco' # 'coco'
+    dataset: 'Cars'
 
     labels: logs/magicpoint_synth_homoAdapt_cars/predictions
-    root: # datasets/COCO
-    root_split_txt: # /datasets/COCO
 
     gaussian_label:
         enable: true
