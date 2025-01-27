@@ -364,10 +364,11 @@ class Train_model_frontend(object):
         losses = {}
         ## get the inputs
         # logging.info('get input img and label')
-        img, labels_2D, mask_2D = (
+        img, labels_2D, mask_2D, loss_mask = (
             sample["image"],
             sample["labels_2D"],
             sample["valid_mask"],
+            sample["mask"],
         )
         # img, labels = img.to(self.device), labels_2D.to(self.device)
 

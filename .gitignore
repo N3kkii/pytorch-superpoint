@@ -4,4 +4,6 @@ datasets/gaussian_noise/
 logs/
 runs/
 datasets/synthetic_shapes_v6/
+masks/
 settings.py
+versions.py

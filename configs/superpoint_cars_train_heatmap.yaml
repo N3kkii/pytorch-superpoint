@@ -2,6 +2,7 @@ data:
     dataset: 'Cars'
 
     labels: logs/magicpoint_synth_homoAdapt_cars/predictions
+    loss_masks: masks
 
     gaussian_label:
         enable: true

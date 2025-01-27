@@ -245,6 +245,12 @@ class Cars(data.Dataset):
         input.update(sample)
         # image
         # img_o = _read_image(self.get_img_from_sample(sample))
+        # get the mask of an image
+        mask = np.load(self.config['loss_masks'] + '/' + sample['name'] + '.jpg' + '_mask.npz')['mask']
+        mask = mask.astype(np.float32)
+        mask = cv2.resize(mask, (self.sizer[1], self.sizer[0]),interpolation=cv2.INTER_AREA)
+        input.update({'mask': mask})
+
         img_o = _read_image(sample['image'])
         H, W = img_o.shape[0], img_o.shape[1]
         # print(f"image: {image.shape}")
