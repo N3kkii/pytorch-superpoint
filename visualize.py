@@ -8,11 +8,13 @@ import sys
 # sys.path.append("path_to_pytorch-superpoint")
 
 from models.SuperPointNet_gauss2 import SuperPointNet_gauss2
+from models.SuperPointNet import SuperPointNet
 
 
 def load_model_from_checkpoint(model_path, device):
     """Load SuperPoint model weights from a .pth.tar checkpoint that contains 'model_state_dict'."""
     model = SuperPointNet_gauss2().to(device)
+    #model = SuperPointNet().to(device)
     checkpoint = torch.load(model_path, map_location=device)
     
     # The checkpoint likely contains 'model_state_dict' instead of direct state_dict
@@ -23,7 +25,7 @@ def load_model_from_checkpoint(model_path, device):
         # But given your error, this is likely the correct key.
         state_dict = checkpoint
     
-    model.load_state_dict(state_dict)
+    model.load_state_dict(state_dict, strict=False)
     model.eval()
     return model
 
@@ -51,23 +53,23 @@ def semi_to_prob(semi):
     prob_full = prob_nodust.view(B, 1, Hc*cell, Wc*cell)
     return prob_full
 
-def extract_keypoints_from_prob(prob_map, threshold=0.015, max_num_keypoints=500):
+def extract_keypoints_from_prob(prob_map, threshold=0.015, max_num_keypoints=1000): #default tresh = 0.015
     prob = prob_map[0,0].detach().cpu().numpy()
     keypoints = np.argwhere(prob > threshold)
     if len(keypoints) == 0:
         return [], []
     scores = prob[keypoints[:,0], keypoints[:,1]]
     idxs_sorted = np.argsort(-scores)
-    if len(idxs_sorted) > max_num_keypoints:
-        idxs_sorted = idxs_sorted[:max_num_keypoints]
     keypoints = keypoints[idxs_sorted]
     scores = scores[idxs_sorted]
-    cv_keypoints = [cv2.KeyPoint(float(x), float(y), 1) for (y, x) in keypoints]
+    cv_keypoints = [cv2.KeyPoint(float(x), float(y), 5) for (y, x) in keypoints]
     return cv_keypoints, scores
 
 if __name__ == "__main__":
-    model_path = "/zfs-pool/xadame44/pytorch-superpoint/logs/superpoint_cars_scratch/checkpoints/superPointNet_100000_checkpoint.pth.tar"
-    image_path = "/zfs-pool/xadame44/datasets/test_car.jpg"
+    #model_path = "/zfs-pool/xadame44/pytorch-superpoint/logs/superpoint_cars_scratch/checkpoints/superPointNet_100000_checkpoint.pth.tar"
+    model_path = "/zfs-pool/xadame44/pytorch-superpoint/logs/superpoint_coco_heat2_0/checkpoints/superPointNet_170000_checkpoint.pth.tar"
+    #model_path = "/zfs-pool/xadame44/pytorch-superpoint/pretraineds/superpoint_v1.pth"
+    image_path = "/zfs-pool/xadame44/datasets/test_car2.jpg"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load the trained model from the checkpoint
@@ -91,14 +93,19 @@ if __name__ == "__main__":
     # Extract keypoints
     cv_keypoints, scores = extract_keypoints_from_prob(prob_map)
 
+    # Load the mask
+    mask = np.load('test_car2_mask.npz')['mask']
+
+    # Filter keypoints based on the mask
+    filtered_keypoints = []
+    for kp in cv_keypoints:
+        x, y = int(kp.pt[0]), int(kp.pt[1])
+        if mask[y, x] > 0:  # Check if the keypoint is inside the mask
+            filtered_keypoints.append(kp)
+
     # Draw keypoints
-    out_img = cv2.drawKeypoints(original_img, cv_keypoints, None, color=(0, 0, 255),
+    out_img = cv2.drawKeypoints(original_img, filtered_keypoints, None, color=(0, 0, 255),
                                 flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-    # Display
-    #cv2.imshow("SuperPoint Keypoints", out_img)
-    #cv2.waitKey(0)
-    #cv2.destroyAllWindows()
-
     # Optionally save
-    cv2.imwrite("detected_keypoints.jpg", out_img)
+    cv2.imwrite("detected_keypoints_coco_dataset2_masked.jpg", out_img)
