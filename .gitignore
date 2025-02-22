@@ -7,3 +7,4 @@ datasets/synthetic_shapes_v6/
 masks/
 settings.py
 versions.py
+datasets/cars_train/
