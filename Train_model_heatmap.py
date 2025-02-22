@@ -20,7 +20,7 @@ from utils.tools import dict_update
 
 # from utils.utils import labels2Dto3D, flattenDetection, labels2Dto3D_flattened
 # from utils.utils import pltImshow, saveImg
-from utils.utils import precisionRecall_torch
+from utils.utils import precisionRecall_torch, mask2Dto3D
 # from utils.utils import save_checkpoint
 
 from pathlib import Path
@@ -146,7 +146,7 @@ class Train_model_heatmap(Train_model_frontend):
     #     self.n_iter = setIter(n_iter)
     #     pass
 
-    def detector_loss(self, input, target, mask=None, loss_type="softmax"):
+    def detector_loss(self, input, target, mask=None, loss_type="softmax", loss_mask=None, loss_mask_inv=None):
         """
         # apply loss on detectors, default is softmax
         :param input: prediction
@@ -165,6 +165,8 @@ class Train_model_heatmap(Train_model_frontend):
             loss_func = nn.MSELoss(reduction="mean")
             loss = loss_func(input, target)
         elif loss_type == "softmax":
+            if loss_mask is not None and loss_mask_inv is not None:
+                input = input * loss_mask + target * loss_mask_inv
             loss_func_BCE = nn.BCELoss(reduction='none').cuda()
             loss = loss_func_BCE(nn.functional.softmax(input, dim=1), target)
             loss = (loss.sum(dim=1) * mask).sum()
@@ -188,10 +190,11 @@ class Train_model_heatmap(Train_model_frontend):
         self.scalar_dict, self.images_dict, self.hist_dict = {}, {}, {}
         ## get the inputs
         # logging.info('get input img and label')
-        img, labels_2D, mask_2D = (
+        img, labels_2D, mask_2D, loss_mask = (
             sample["image"],
             sample["labels_2D"],
             sample["valid_mask"],
+            sample["loss_mask"],
         )
         # img, labels = img.to(self.device), labels_2D.to(self.device)
 
@@ -252,6 +255,8 @@ class Train_model_heatmap(Train_model_frontend):
             if if_warp:
                 warped_labels = sample["warped_labels"]
 
+        loss_mask, loss_mask_inv = mask2Dto3D(sample['loss_mask'])
+
         add_dustbin = False
         if det_loss_type == "l2":
             add_dustbin = False
@@ -267,6 +272,8 @@ class Train_model_heatmap(Train_model_frontend):
             target=labels_3D.to(self.device),
             mask=mask_3D_flattened,
             loss_type=det_loss_type,
+            loss_mask=loss_mask,
+            loss_mask_inv=loss_mask_inv
         )
         # warp
         if if_warp:
