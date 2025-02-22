@@ -245,11 +245,6 @@ class Cars(data.Dataset):
         input.update(sample)
         # image
         # img_o = _read_image(self.get_img_from_sample(sample))
-        # get the mask of an image
-        mask = np.load(self.config['loss_masks'] + '/' + sample['name'] + '.jpg' + '_mask.npz')['mask']
-        mask = mask.astype(np.float32)
-        mask = cv2.resize(mask, (self.sizer[1], self.sizer[0]),interpolation=cv2.INTER_AREA)
-        input.update({'mask': mask})
 
         img_o = _read_image(sample['image'])
         H, W = img_o.shape[0], img_o.shape[1]
@@ -401,6 +396,14 @@ class Cars(data.Dataset):
             image = np.array(img)
 
         input.update({'name': name, 'scene_name': "./"}) # dummy scene name
+
+        # Get the mask for loss calculation
+        loss_mask = np.load(self.config['loss_masks'] + '/' + sample['name'] + '.jpg' + '_mask.npz')['mask']
+        loss_mask = loss_mask.astype(np.float32)
+        loss_mask = cv2.resize(loss_mask, (self.sizer[1], self.sizer[0]),interpolation=cv2.INTER_AREA)
+        loss_mask = torch.tensor(loss_mask).type(torch.Tensor)
+        input.update({'loss_mask': loss_mask})
+
         return input
 
     def __len__(self):
