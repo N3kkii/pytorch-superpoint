@@ -924,3 +924,47 @@ def crop_or_pad_choice(in_num_points, out_num_points, shuffle=False):
         pad = np.random.choice(choice, num_pad, replace=True)
         choice = np.concatenate([choice, pad])
     return choice
+
+def mask2Dto3D(mask2D, cell_size=8):
+    '''
+    Change the shape of a batch of masks into 3D.
+
+    :param mask2D:
+        tensor [batch_size, H, W]
+    :param cell_size:
+        8
+    :return:
+         mask3D: tensor[batch_size, 65, Hc, Wc]
+         mask3D_inv: tensor[batch_size, 65, Hc, Wc] with inverted values
+        
+    
+    '''
+    batch_size, H, W = mask2D.shape
+    Hc, Wc = H // cell_size, W // cell_size
+    
+    # loss coefficient
+    loss_lambda = 0.6
+
+    # create channel dimension
+    mask2D = torch.unsqueeze(mask2D, 1)
+
+    # convert to 3D
+    s2d = SpaceToDepth(cell_size)
+    mask3D = s2d(mask2D)
+
+    # add dustbin channel
+    dustbin = mask3D.sum(dim=1)
+    dustbin = 1 - dustbin
+    dustbin[dustbin < 1.] = 0
+    mask3D = torch.cat((mask3D, dustbin.view(batch_size, 1, Hc, Wc)), dim=1)
+    dn = mask3D.sum(dim=1)
+    mask3D = mask3D.div(torch.unsqueeze(dn, 1))
+
+    # create an inverted mask
+    mask3D_inv = (~(mask3D > 0.5)).float()
+
+    # applying lambda value to masks
+    mask3D_inv[:,:-1,:,:] = mask3D_inv[:,:-1,:,:] * (1-loss_lambda)
+    mask3D[:,:-1,:,:] = mask3D[:,:-1,:,:] * loss_lambda
+
+    return mask3D, mask3D_inv
