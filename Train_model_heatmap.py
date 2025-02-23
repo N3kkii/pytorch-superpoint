@@ -272,8 +272,8 @@ class Train_model_heatmap(Train_model_frontend):
             target=labels_3D.to(self.device),
             mask=mask_3D_flattened,
             loss_type=det_loss_type,
-            loss_mask=loss_mask,
-            loss_mask_inv=loss_mask_inv
+            loss_mask=loss_mask.to(self.device),
+            loss_mask_inv=loss_mask_inv.to(self.device)
         )
         # warp
         if if_warp:
