@@ -41,7 +41,8 @@ class Cars(data.Dataset):
         },
         'homography_adaptation': {
             'enable': False
-        }
+        },
+        'loss_masks': False
     }
 
     def __init__(self, export=False, transform=None, task='train', **config):
@@ -397,12 +398,13 @@ class Cars(data.Dataset):
 
         input.update({'name': name, 'scene_name': "./"}) # dummy scene name
 
-        # Get the mask for loss calculation
-        loss_mask = np.load(self.config['loss_masks'] + '/' + sample['name'] + '.jpg' + '_mask.npz')['mask']
-        loss_mask = loss_mask.astype(np.float32)
-        loss_mask = cv2.resize(loss_mask, (self.sizer[1], self.sizer[0]),interpolation=cv2.INTER_AREA)
-        loss_mask = torch.tensor(loss_mask).type(torch.Tensor)
-        input.update({'loss_mask': loss_mask})
+        if self.config['loss_masks']:
+            # Get the mask for loss calculation
+            loss_mask = np.load(self.config['loss_masks'] + '/' + sample['name'] + '.jpg' + '_mask.npz')['mask']
+            loss_mask = loss_mask.astype(np.float32)
+            loss_mask = cv2.resize(loss_mask, (self.sizer[1], self.sizer[0]),interpolation=cv2.INTER_AREA)
+            loss_mask = torch.tensor(loss_mask).type(torch.Tensor)
+            input.update({'loss_mask': loss_mask})
 
         return input
 
