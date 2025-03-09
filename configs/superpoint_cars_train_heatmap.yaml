@@ -1,8 +1,11 @@
 data:
     dataset: 'Cars'
 
-    labels: logs/magicpoint_synth_homoAdapt_cars/predictions
-    loss_masks: masks
+    labels: logs/magicpoint_cars/predictions
+    loss_masks:
+        enable: true
+        path: logs/masks
+    loss_lambda: 0.4
 
     gaussian_label:
         enable: true
@@ -50,7 +53,7 @@ front_end_model: 'Train_model_heatmap'  # 'Train_model_frontend'
 
 training:
     workers_train: 64 # 16
-    #workers_val: 2 # 2
+    workers_val: 64 # 2
 
 model:
     # name: 'magic_point'
@@ -92,9 +95,9 @@ model:
 retrain: True # set true for new model
 reset_iter: True # set true to set the iteration number to 0
 train_iter: 100000
-validation_interval: 99999999999
+validation_interval: 200
 tensorboard_interval: 200 # 200
-save_interval: 2000
+save_interval: 200
 #validation_size: 5
 
 pretrained: 

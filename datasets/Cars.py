@@ -42,7 +42,10 @@ class Cars(data.Dataset):
         'homography_adaptation': {
             'enable': False
         },
-        'loss_masks': False
+        'loss_masks': {
+            'enable': False,
+            'path' : None
+        }
     }
 
     def __init__(self, export=False, transform=None, task='train', **config):
@@ -57,7 +60,7 @@ class Cars(data.Dataset):
         # get files
         #base_path = Path(DATA_PATH, 'COCO/' + task + '2014/')
         # base_path = Path(DATA_PATH, 'COCO_small/' + task + '2014/')
-        base_path = Path(DATA_PATH, 'cars_train')
+        base_path = Path(DATA_PATH, 'cars_' + task)
         image_paths = list(base_path.iterdir())
         # if config['truncate']:
         #     image_paths = image_paths[:config['truncate']]
@@ -398,13 +401,19 @@ class Cars(data.Dataset):
 
         input.update({'name': name, 'scene_name': "./"}) # dummy scene name
 
-        if self.config['loss_masks']:
+        if self.config['loss_masks']['enable'] and self.action == 'train':
             # Get the mask for loss calculation
-            loss_mask = np.load(self.config['loss_masks'] + '/' + sample['name'] + '.jpg' + '_mask.npz')['mask']
+            mask_path = self.config['loss_masks']['path']
+            loss_mask = np.load(mask_path + '/' + sample['name'] + '.jpg' + '_mask.npz')['mask']
             loss_mask = loss_mask.astype(np.float32)
             loss_mask = cv2.resize(loss_mask, (self.sizer[1], self.sizer[0]),interpolation=cv2.INTER_AREA)
             loss_mask = torch.tensor(loss_mask).type(torch.Tensor)
             input.update({'loss_mask': loss_mask})
+            
+            if self.config['warped_pair']['enable']:
+                warped_mask = self.inv_warp_image(loss_mask.squeeze(), homography, mode='bilinear')
+                input.update({'warped_loss_mask': warped_mask})
+
 
         return input
 

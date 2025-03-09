@@ -62,7 +62,7 @@ class Train_model_heatmap(Train_model_frontend):
         "save_interval": 2000,
         "tensorboard_interval": 200,
         "model": {"subpixel": {"enable": False}},
-        "data": {"gaussian_label": {"enable": False}},
+        "data": {"gaussian_label": {"enable": False}, "loss_masks": {"enable": False}},
     }
 
     def __init__(self, config, save_path=Path("."), device="cpu", verbose=False):
@@ -81,6 +81,7 @@ class Train_model_heatmap(Train_model_frontend):
         self._eval = True
         self.cell_size = 8
         self.subpixel = False
+        self.masks = self.config["data"]["loss_masks"]["enable"]
 
         self.max_iter = config["train_iter"]
 
@@ -190,11 +191,10 @@ class Train_model_heatmap(Train_model_frontend):
         self.scalar_dict, self.images_dict, self.hist_dict = {}, {}, {}
         ## get the inputs
         # logging.info('get input img and label')
-        img, labels_2D, mask_2D, loss_mask = (
+        img, labels_2D, mask_2D = (
             sample["image"],
             sample["labels_2D"],
             sample["valid_mask"],
-            sample["loss_mask"],
         )
         # img, labels = img.to(self.device), labels_2D.to(self.device)
 
@@ -254,8 +254,13 @@ class Train_model_heatmap(Train_model_frontend):
             labels_2D = sample["labels_2D"]
             if if_warp:
                 warped_labels = sample["warped_labels"]
-
-        loss_mask, loss_mask_inv = mask2Dto3D(sample['loss_mask'])
+        
+        # usings loss masks
+        loss_mask, loss_mask_inv = None, None
+        if train and self.masks:
+            loss_mask = sample['loss_mask']
+            if loss_mask is not None:
+                loss_mask, loss_mask_inv = mask2Dto3D(loss_mask, self.config['data']['loss_lambda'])
 
         add_dustbin = False
         if det_loss_type == "l2":
@@ -272,8 +277,8 @@ class Train_model_heatmap(Train_model_frontend):
             target=labels_3D.to(self.device),
             mask=mask_3D_flattened,
             loss_type=det_loss_type,
-            loss_mask=loss_mask.to(self.device),
-            loss_mask_inv=loss_mask_inv.to(self.device)
+            loss_mask=loss_mask.to(self.device) if train and self.masks else None,
+            loss_mask_inv=loss_mask_inv.to(self.device) if train and self.masks else None
         )
         # warp
         if if_warp:
@@ -285,11 +290,21 @@ class Train_model_heatmap(Train_model_frontend):
             mask_3D_flattened = self.getMasks(
                 mask_warp_2D, self.cell_size, device=self.device
             )
+            
+            # usings warped loss masks
+            warped_loss_mask, warped_loss_mask_inv = None, None
+            if train and self.masks:
+                warped_loss_mask = sample['warped_loss_mask']
+                if warped_loss_mask is not None:
+                    warped_loss_mask, warped_loss_mask_inv = mask2Dto3D(warped_loss_mask, self.config['data']['loss_lambda'])
+
             loss_det_warp = self.detector_loss(
                 input=outs_warp["semi"],
                 target=labels_3D.to(self.device),
                 mask=mask_3D_flattened,
                 loss_type=det_loss_type,
+                loss_mask=warped_loss_mask.to(self.device) if train and self.masks else None,
+                loss_mask_inv=warped_loss_mask_inv.to(self.device) if train and self.masks else None
             )
         else:
             loss_det_warp = torch.tensor([0]).float().to(self.device)
