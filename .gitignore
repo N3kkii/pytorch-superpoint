@@ -8,3 +8,5 @@ masks/
 settings.py
 versions.py
 datasets/cars_train/
+datasets/cars_val/
+*.jpg
