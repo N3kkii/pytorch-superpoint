@@ -925,7 +925,7 @@ def crop_or_pad_choice(in_num_points, out_num_points, shuffle=False):
         choice = np.concatenate([choice, pad])
     return choice
 
-def mask2Dto3D(mask2D, cell_size=8):
+def mask2Dto3D(mask2D, loss_lambda, cell_size=8):
     '''
     Change the shape of a batch of masks into 3D.
 
@@ -934,37 +934,29 @@ def mask2Dto3D(mask2D, cell_size=8):
     :param cell_size:
         8
     :return:
-         mask3D: tensor[batch_size, 65, Hc, Wc]
-         mask3D_inv: tensor[batch_size, 65, Hc, Wc] with inverted values
-        
-    
+         final_mask3D: tensor[batch_size, 64, Hc, Wc]
+         final_mask3D_inv: tensor[batch_size, 64, Hc, Wc] with inverted values
     '''
     batch_size, H, W = mask2D.shape
-    Hc, Wc = H // cell_size, W // cell_size
-    
-    # loss coefficient
-    loss_lambda = 0.6
+    Hc, Wc = H // 8, W // 8
 
-    # create channel dimension
+    # Add channel dimension
     mask2D = torch.unsqueeze(mask2D, 1)
 
-    # convert to 3D
-    s2d = SpaceToDepth(cell_size)
+    # Go 3D
+    s2d = SpaceToDepth(8)
     mask3D = s2d(mask2D)
 
-    # add dustbin channel
-    dustbin = mask3D.sum(dim=1)
-    dustbin = 1 - dustbin
-    dustbin[dustbin < 1.] = 0
-    mask3D = torch.cat((mask3D, dustbin.view(batch_size, 1, Hc, Wc)), dim=1)
-    dn = mask3D.sum(dim=1)
-    mask3D = mask3D.div(torch.unsqueeze(dn, 1))
-
-    # create an inverted mask
+    # Create inverted mask
     mask3D_inv = (~(mask3D > 0.5)).float()
 
-    # applying lambda value to masks
-    mask3D_inv[:,:-1,:,:] = mask3D_inv[:,:-1,:,:] * (1-loss_lambda)
-    mask3D[:,:-1,:,:] = mask3D[:,:-1,:,:] * loss_lambda
+    # Apply lambda value and construct final masks
+    final_mask3D = mask3D * loss_lambda + mask3D_inv * (1 - loss_lambda)
+    final_mask3D_inv = mask3D *(1 - loss_lambda) + mask3D_inv * loss_lambda
 
-    return mask3D, mask3D_inv
+    # Add dustbin channel
+    # dustbin = torch.ones((batch_size, 1, Hc, Wc), dtype=mask3D.dtype, device=mask3D.device)
+    # final_mask3D = torch.cat((final_mask3D, dustbin.view(batch_size, 1, Hc, Wc)), dim=1)
+    # final_mask3D_inv = torch.cat((final_mask3D_inv, dustbin.view(batch_size, 1, Hc, Wc)), dim=1)
+
+    return final_mask3D, final_mask3D_inv

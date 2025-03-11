@@ -167,7 +167,7 @@ class Train_model_heatmap(Train_model_frontend):
             loss = loss_func(input, target)
         elif loss_type == "softmax":
             if loss_mask is not None and loss_mask_inv is not None:
-                input = input * loss_mask + target * loss_mask_inv
+                input[:,:-1,:,:] = input[:,:-1,:,:] * loss_mask + target[:,:-1,:,:] * loss_mask_inv
             loss_func_BCE = nn.BCELoss(reduction='none').cuda()
             loss = loss_func_BCE(nn.functional.softmax(input, dim=1), target)
             loss = (loss.sum(dim=1) * mask).sum()
