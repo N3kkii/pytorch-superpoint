@@ -406,8 +406,12 @@ class Cars(data.Dataset):
             mask_path = self.config['loss_masks']['path']
             loss_mask = np.load(mask_path + '/' + sample['name'] + '.jpg' + '_mask.npz')['mask']
             loss_mask = loss_mask.astype(np.float32)
+
             loss_mask = cv2.resize(loss_mask, (self.sizer[1], self.sizer[0]),interpolation=cv2.INTER_AREA)
-            loss_mask = torch.tensor(loss_mask).type(torch.Tensor)
+            # fix interpolated numbers back to binary
+            loss_mask[loss_mask > 0] = 1.0
+
+            loss_mask = torch.tensor(loss_mask)
             input.update({'loss_mask': loss_mask})
             
             if self.config['warped_pair']['enable']:
